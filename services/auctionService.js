@@ -46,24 +46,27 @@ const auctionService = () => {
 	const placeNewBid = (auctionId, customerId, price, cb, errorCb) => {
 
         Auction.findById(auctionId, function(err, auction){
-            if(auction.minimumPrice > price) {errorCb(err); }       
+            //console.log("Price: " + price + "\nMinimumPrice: " + auction.minimumPrice);
+            if (auction.minimumPrice > price) { errorCb("412 Precondition Failed!"); }
+            if (auction.endDate < new Date) { errorCb("403 Forbidden"); }
         })
+        
 		AuctionBid.find({ auctionId: auctionId}, function(err, auctionbids){
-            console.log(auctionbids[auctionbids.length-1]);  
-            if(auctionbids[auctionbids.length-1].price > price) {errorCb(err); }  
+            //console.log("AuctionBid: " + auctionbids);
+            if (auctionbids != "") {
+                if(auctionbids[auctionbids.length-1].price > price) { errorCb("412 Precondition Failed!"); }  
+            }
         });
         Customer.findById(customerId, function(err, customer){
-            console.log(customer)  
-            if(err) {errorCb(err); }  
+            //console.log(customerId)  
+            if(err) {errorCb("404 Customer Not Found"); }  
         })
-        auctionbid = {
+        Auction.updateOne({_id: auctionId}, {auctionWinner: customerId});
+        auctionbid =  {
             "auctionId" : auctionId,
             "customerId" : customerId,
             "price" : price
         }
-        Auction.findByIdAndUpdate(auctionId, function(err, auction){
-            auction.auctionWinner = customerId;
-        })
         AuctionBid.create(auctionbid, function(err,result){
             if(err){errorCb(err);}
             else {(cb(result));}

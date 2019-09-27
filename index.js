@@ -136,7 +136,9 @@ app.post('/api/auctions/:id/bids', function(req, res){
     auctionService.placeNewBid(auctionId,customerId,price, function(auctionbid){
         return res.status(201).json(auctionbid);
     },  function(err){
-        return res.status(400).json(err);
+        if (err == "412 Precondition Failed") { return res.status(412).json(err);}
+        else if (err == "403 Forbidden") { return res.status(403).json(err);}
+        else if (err == "404 Customer Not Found") { return res.status(404).json(err);}
     })
 });
 app.listen(3000, function() {

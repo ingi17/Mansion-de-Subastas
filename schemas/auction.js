@@ -5,7 +5,5 @@ module.exports = new Schema({
     minimumPrice:{ type:Number, default:1000},
     endDate: {type:Date, required:true},
     auctionWinner: Schema.Types.ObjectId
-
-
 });
 
