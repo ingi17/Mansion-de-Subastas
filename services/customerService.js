@@ -18,7 +18,6 @@ const customerService = () => {
     const getCustomerAuctionBids = (custId, cb, errorCb) => {
         AuctionBit.find({customerId : custId},function(err, customer){
             if (err) { errorCb(err);}
-            if (errorCb) { console.log(1);}
             cb(customer)
         });
     };

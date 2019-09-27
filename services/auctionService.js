@@ -1,5 +1,6 @@
 const Auction = require('../data/db').Auction;
 const AuctionBid = require('../data/db').AuctionBid
+const Art = require('../data/db').Art;
 const Customer = require("../data/db").Customer;
 
 
@@ -19,21 +20,32 @@ const auctionService = () => {
     };
 
     const getAuctionWinner = (auctionId, cb, errorCb) => {
-        console.log(auctionId)
         Auction.findById(auctionId, function(err, auction){
-            if(auction.auctionWinner == null) {cb('This auction had no bids')}
-            Customer.findById(auction.auctionWinner, function(err, customer){
-                cb(customer)
-            })
+            if (auction.endDate > new Date) { errorCb("409 Conflict");}
+            else if(auction.auctionWinner == null) {cb('This auction had no bids')}
+            else if (err) {errorCb(err)}
+            else {
+                Customer.findById(auction.auctionWinner, function(err, customer){
+                    cb(customer)
+                })
+            }
             
 
         })
     };
 
 	const createAuction = (auction, cb, errorCb) => {
-        Auction.create(auction, function(err,result){
-            if(err){errorCb(err);}
-            else {(cb(result));}
+        Auction.find({artId : auction.artId}, (err, art) => {
+            if(art.length != 0){ errorCb("409 Conflict"); }
+            else{
+                Art.findById(auction.artId, function(err, art){
+                    if (art.isAuctionItem == false) { errorCb("412 Precondition Failed"); }
+                    else { 
+                        Auction.create(auction, function(err,result){ cb(result); })
+                    };
+                })
+            }
+            
         });
     };
 
@@ -46,31 +58,33 @@ const auctionService = () => {
 	const placeNewBid = (auctionId, customerId, price, cb, errorCb) => {
 
         Auction.findById(auctionId, function(err, auction){
-            //console.log("Price: " + price + "\nMinimumPrice: " + auction.minimumPrice);
-            if (auction.minimumPrice > price) { errorCb("412 Precondition Failed!"); }
-            if (auction.endDate < new Date) { errorCb("403 Forbidden"); }
-        })
-        
-		AuctionBid.find({ auctionId: auctionId}, function(err, auctionbids){
-            //console.log("AuctionBid: " + auctionbids);
-            if (auctionbids != "") {
-                if(auctionbids[auctionbids.length-1].price > price) { errorCb("412 Precondition Failed!"); }  
+            if (auction.minimumPrice > price) { errorCb("412 Precondition Failed");}
+            else if (auction.endDate < new Date) { errorCb("403 Forbidden");}
+            else { // nested spaghetti code (puke)
+                AuctionBid.find({ auctionId: auctionId}, function(err, auctionbids){
+                        if(auctionbids.length > 0 && auctionbids[auctionbids.length-1].price >= price) { errorCb("412 Precondition Failed");}  
+                        else {
+                            Customer.findById(customerId, function(err, customer){
+                                if(err) {errorCb("404 Customer Not Found"); } 
+                                else {
+                                    Auction.findById(auctionId).updateOne({auctionWinner: customerId}, function(err, auction) {});
+                                    auctionbid =  {
+                                        "auctionId" : auctionId,
+                                        "customerId" : customerId,
+                                        "price" : price
+                                    }   
+                                
+                                    AuctionBid.create(auctionbid, function(err,result){
+                                        if(err){errorCb(err);}
+                                        else {(cb(result));}
+                                    });
+                                }
+                            })
+                        }
+                    
+                });
             }
-        });
-        Customer.findById(customerId, function(err, customer){
-            //console.log(customerId)  
-            if(err) {errorCb("404 Customer Not Found"); }  
         })
-        Auction.updateOne({_id: auctionId}, {auctionWinner: customerId});
-        auctionbid =  {
-            "auctionId" : auctionId,
-            "customerId" : customerId,
-            "price" : price
-        }
-        AuctionBid.create(auctionbid, function(err,result){
-            if(err){errorCb(err);}
-            else {(cb(result));}
-        });
 	}
 
     return {

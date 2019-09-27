@@ -27,7 +27,6 @@ app.get('/api/arts/:id', function(req,res){
     });
 });
 app.post('/api/arts', function(req, res){
-    console.log(req.body)
     artService.createArt(req.body, function(art){
         return res.status(201).json(art);
     },  function(err){
@@ -51,7 +50,6 @@ app.get('/api/artists/:id', function(req,res){
     });
 });
 app.post('/api/artists', function(req, res){
-    console.log(req.body)
     artistService.createArtist(req.body, function(art){
         return res.status(201).json(art);
     },  function(err){
@@ -74,7 +72,6 @@ app.get('/api/customers/:id', function(req,res){
     });
 });
 app.post('/api/customers', function(req, res){
-    console.log(req.body)
     customerService.createCustomer(req.body, function(art){
         return res.status(201).json(art);
     },  function(err){
@@ -107,17 +104,19 @@ app.get('/api/auctions/:id', function(req,res){
 app.get('/api/auctions/:id/winner', function(req,res){
     const auctionId = req.params.id;
     auctionService.getAuctionWinner(auctionId,function(auction){
-        console.log(auctionId)
-        if(auction == "") return res.status(200).json("this auction has no bids")
+        if(auction == "") return res.status(200).json("This auction has no bids")
         return res.status(200).json(auction)
     },function(err){
-        return res.status(400).json(err)
+        if (err == "409 Conflict") {return res.status(409).json(err);}
+        return res.status(404).json(err);
     });
 });
 app.post('/api/auctions', function(req, res){
     auctionService.createAuction(req.body, function(auction){
         return res.status(201).json(auction);
     },  function(err){
+        if (err == "412 Precondition Failed") { return res.status(412).json(err); }
+        else if (err == "409 Conflict") { return res.status(409).json(err); }
         return res.status(400).json(err);
     })
 });
