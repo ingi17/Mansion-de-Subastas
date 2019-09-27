@@ -1,7 +1,6 @@
 const Auction = require('../data/db').Auction;
 const AuctionBid = require('../data/db').AuctionBid
 const Customer = require("../data/db").Customer;
-const bodyParser = require('body-parser');
 
 
 const auctionService = () => {
@@ -47,19 +46,24 @@ const auctionService = () => {
 	const placeNewBid = (auctionId, customerId, price, cb, errorCb) => {
 
         Auction.findById(auctionId, function(err, auction){
-            console.log(auction.minimumPrice)
-            console.log(price)
-            if(auction.minimumPrice > price) {errorCb(err); return;}       
+            if(auction.minimumPrice > price) {errorCb(err); }       
         })
 		AuctionBid.find({ auctionId: auctionId}, function(err, auctionbids){
-            console.log(auctionbids)  
-            if(auctionbids > price) {errorCb(err); return;}  
+            console.log(auctionbids[auctionbids.length-1]);  
+            if(auctionbids[auctionbids.length-1].price > price) {errorCb(err); }  
         });
+        Customer.findById(customerId, function(err, customer){
+            console.log(customer)  
+            if(err) {errorCb(err); }  
+        })
         auctionbid = {
             "auctionId" : auctionId,
             "customerId" : customerId,
             "price" : price
         }
+        Auction.findByIdAndUpdate(auctionId, function(err, auction){
+            auction.auctionWinner = customerId;
+        })
         AuctionBid.create(auctionbid, function(err,result){
             if(err){errorCb(err);}
             else {(cb(result));}
